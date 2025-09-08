@@ -7,7 +7,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDW7WeO3Lk1_V-pG3GX8_77Wo2LX6rxBt4",
+    apiKey: "keyhere",
     authDomain: "coin-service-326121.firebaseapp.com",
     projectId: "coin-service-326121",
     storageBucket: "coin-service-326121.firebasestorage.app",
@@ -159,4 +159,5 @@ uploadBtn.addEventListener('click', async (e) => {
     } finally {
         uploadBtn.disabled = false;
     }
+
 });
