@@ -1,0 +1,8 @@
+[
+    {
+      "origin": ["https://verimindai.com"],
+      "method": ["PUT"],
+      "responseHeader": ["Content-Type"],
+      "maxAgeSeconds": 3600
+    }
+  ]
