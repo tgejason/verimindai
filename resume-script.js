@@ -7,7 +7,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDW7WeO3Lk1_V-pG3GX8_77Wo2LX6rxBt4",
+    apiKey: "keyhere",
     authDomain: "coin-service-326121.firebaseapp.com",
     projectId: "coin-service-326121",
     storageBucket: "coin-service-326121.firebasestorage.app",
@@ -351,4 +351,5 @@ async function fetchAndRenderResume() {
 }
 
 // Initial call to start the process
+
 fetchAndRenderResume();
