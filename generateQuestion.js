@@ -18,6 +18,8 @@ async function getGenerativeAIModel() {
 
 exports.generateQuestion = onCall({ secrets: [geminiApiKey] }, async (request) => {
     try {
+        console.log('generateQuestion function started.'); // <-- New log to confirm execution
+        
         const { skill, jobTitle } = request.data;
         
         if (!skill || !jobTitle) {
@@ -26,16 +28,30 @@ exports.generateQuestion = onCall({ secrets: [geminiApiKey] }, async (request) =
 
         const model = await getGenerativeAIModel();
         
-        const prompt = `Based on the job title "${jobTitle}" and the skill "${skill}", generate a single, concise question about how the skill was likely used in that role. The question should be suitable for an interview setting. Do not include any other text, just the question itself.`;
-
+        const prompt = `Based on the job title "${jobTitle}" and the skill "${skill}", generate a JSON object containing a tree of interview questions. The object must have three keys: 'warmup', 'manager', and 'legendary'. The value for each key should be a list of 5-7 relevant questions. Ensure the questions increase in complexity and technicality from 'warmup' to 'legendary'. Do not include any other text or formatting.`;
+        
         const result = await model.generateContent(prompt);
-        const question = result.response.text().trim().replace(/['"]+/g, '');
+        const text = result.response.text().trim();
+        
+        // Sanitize the text to remove any leading/trailing backticks and "json" tag
+        const sanitizedText = text.replace(/```json\s*|```/g, '').trim();
 
-        console.log(`Generated question: ${question}`);
-        return { question: question };
+        // Attempt to parse the sanitized JSON response
+        const questionsData = JSON.parse(sanitizedText);
+
+        console.log(`Generated structured questions: ${JSON.stringify(questionsData, null, 2)}`);
+        return questionsData;
 
     } catch (error) {
+        // Log a detailed error message for better debugging
         console.error('Error in generateQuestion:', error);
+        
+        // Check for the 503 "Service Unavailable" error and provide a user-friendly message
+        if (error.status === 503) {
+            throw new HttpsError('unavailable', 'The AI model is currently swamped with brilliant ideas. Please give it a moment to catch its breath.');
+        }
+        
+        // For all other errors, use a generic message
         throw new HttpsError('internal', `Failed to generate question: ${error.message}`);
     }
 });
