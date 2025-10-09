@@ -1,7 +1,7 @@
 # verimindai
 verimindai portal
 working demo:
-https://youtu.be/Vk88vyTqzLI?si=e7Mb8dpdYtOj6VGv
+https://youtu.be/FQjP0X3ys-w?si=erRPTJxYiUvdKdcl
 
 
 This application transforms a static resume into a dynamic, interactive portfolio using the Gemini 2.5 Flash Image API. The project showcases a novel approach to resume presentation by giving life to professional experience through personalized images and interactive Q&A.
