@@ -1,13 +1,11 @@
-// Import necessary Firebase SDKs
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "keyhere",
+    apiKey: "AIzaSyDW7WeO3Lk1_V-pG3GX8_77Wo2LX6rxBt4",
     authDomain: "coin-service-326121.firebaseapp.com",
     projectId: "coin-service-326121",
     storageBucket: "coin-service-326121.firebasestorage.app",
@@ -16,32 +14,23 @@ const firebaseConfig = {
     measurementId: "G-ZFV7G0S6VC"
 };
 
-// Initialize Firebase App, Auth, and Firestore
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// Callable functions
-const generateImageCallable = httpsCallable(functions, 'generateExperienceImage');
 const generateQuestionCallable = httpsCallable(functions, 'generateQuestion');
+const generateImageCallable = httpsCallable(functions, 'generateExperienceImage');
 
-// DOM elements
 const loadingMessage = document.getElementById('loading-message');
 const resumeContainer = document.getElementById('resume-container');
 const skillsContainer = document.getElementById('skills-container');
-const experienceContainer = document.getElementById('experience-container');
 const timelineContainer = document.getElementById('timeline');
+const questionsContainer = document.getElementById('interview-questions-container');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// State variables for highlighting
-let isSkillClicked = false;
-let currentHighlightedExperiences = new Set();
-let isHighlightingInProgress = false;
 let selectedSkillName = null;
 
-
-// Logout functionality
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
         window.location.href = 'index.html';
@@ -50,306 +39,342 @@ logoutBtn.addEventListener('click', () => {
     });
 });
 
-// Toggle logout button visibility
 onAuthStateChanged(auth, (user) => {
     if (user) {
         logoutBtn.style.display = 'block';
+        fetchAndRenderResume(user);
     } else {
-        logoutBtn.style.display = 'none';
+        window.location.href = 'index.html';
     }
 });
 
-// Function to handle highlighting of experiences
-function highlightExperiences(experienceIndices) {
-    // Clear previous highlights
-    document.querySelectorAll('.job-entry.highlight').forEach(el => el.classList.remove('highlight'));
-
-    if (experienceIndices.length === 0) {
-        return;
-    }
-
-    experienceIndices.forEach(index => {
-        const jobElement = document.getElementById(`job-${index}`);
-        if (jobElement) {
-            jobElement.classList.add('highlight');
-        }
+function highlightExperiences(indices) {
+    const allJobEntries = document.querySelectorAll('.job-entry');
+    allJobEntries.forEach(jobEntry => {
+        jobEntry.classList.remove('highlight');
     });
-}
-
-            // Create this helper function to handle showing descriptions
-function showDescriptionsForIndices(indices) {
-    const allDescriptions = document.querySelectorAll('.job-description-container');
-    allDescriptions.forEach(desc => desc.style.display = 'none'); // Hide all descriptions first
-
-    indices.forEach(index => {
-        const jobEntry = document.getElementById(`job-${index}`);
-        if (jobEntry) {
-            const descriptionContainer = jobEntry.querySelector('.job-description-container');
-            if (descriptionContainer) {
-                descriptionContainer.style.display = 'block'; // Show the relevant descriptions
+    if (indices && indices.length > 0) {
+        indices.forEach(index => {
+            const jobEntry = document.getElementById(`job-${index}`);
+            if (jobEntry) {
+                jobEntry.classList.add('highlight');
             }
-        }
-    });
+        });
+    }
 }
 
-// Create this helper function to hide all descriptions
+function showDescriptionsForIndices(indices) {
+    const allJobDescriptions = document.querySelectorAll('.job-description-container');
+    allJobDescriptions.forEach(desc => {
+        desc.style.display = 'none';
+    });
+    if (indices && indices.length > 0) {
+        indices.forEach(index => {
+            const jobEntry = document.getElementById(`job-${index}`);
+            if (jobEntry) {
+                const descriptionContainer = jobEntry.querySelector('.job-description-container');
+                if (descriptionContainer) {
+                    descriptionContainer.style.display = 'block';
+                }
+            }
+        });
+    }
+}
+
 function hideAllDescriptions() {
     document.querySelectorAll('.job-description-container').forEach(desc => {
         desc.style.display = 'none';
     });
 }
 
-// Function to handle the generation of a question
-
-async function generateAndDisplayQuestion(skill, jobTitle, jobEntryElement) {
-    // 1. Remove any existing question boxes to prevent duplicates
-    console.log(`generateAndDisplayQuestion called with: skill=${skill}, jobTitle=${jobTitle}`);
-
-    const existingBox = jobEntryElement.querySelector('.question-box');
-    if (existingBox) {
-        existingBox.remove();
-        return; // Clicking again on the same box will close it
-    }
-
-    // 2. Create and show a "loading" message
-    const loadingBox = document.createElement('div');
-    loadingBox.classList.add('question-box');
-    loadingBox.textContent = 'Generating question...';
-    jobEntryElement.appendChild(loadingBox);
-
-    try {
-        const result = await generateQuestionCallable({ skill, jobTitle });
-        console.log(result)
-        const question = result.data.question;
-        
-        // 3. Update the box with the generated question
-        loadingBox.textContent = question;
-        
-    } catch (error) {
-        console.error('Error generating question:', error);
-        loadingBox.textContent = 'Failed to generate question. Please try again.';
-    }
-}
-
-// Function to render skills with interactive functionality
 function renderSkills(skills) {
     skillsContainer.innerHTML = '<h2>Skills</h2>';
     const skillsList = document.createElement('div');
     skillsList.classList.add('skills-list');
-
     skills.forEach(skill => {
         const skillElement = document.createElement('span');
         skillElement.classList.add('skill-tag');
         skillElement.textContent = skill.name;
         skillElement.dataset.experienceIndices = JSON.stringify(skill.experienceIndex);
-
-        // Add mouseover/mouseout for hover effect
-        skillElement.addEventListener('mouseover', () => {
-            if (!isSkillClicked) {
+        const hasMatchingExperience = skill.experienceIndex && skill.experienceIndex.length > 0;
+        if (hasMatchingExperience) {
+            skillElement.addEventListener('mouseover', () => {
+                if (selectedSkillName === null) {
+                    const indices = JSON.parse(skillElement.dataset.experienceIndices);
+                    highlightExperiences(indices);
+                }
+            });
+            skillElement.addEventListener('mouseout', () => {
+                if (selectedSkillName === null) {
+                    highlightExperiences([]);
+                }
+            });
+            skillElement.addEventListener('click', () => {
                 const indices = JSON.parse(skillElement.dataset.experienceIndices);
-                highlightExperiences(indices);
-            }
-        });
-
-        skillElement.addEventListener('mouseout', () => {
-            if (!isSkillClicked) {
-                highlightExperiences([]);
-            }
-        });
-
-        // Add click for persistent highlight and question generation
-        skillElement.addEventListener('click', () => {
-            const indices = JSON.parse(skillElement.dataset.experienceIndices);
-            
-            // First, remove the 'selected' class from all skill tags
-            document.querySelectorAll('.skill-tag.selected').forEach(el => el.classList.remove('selected'));
-            
-            // Toggle the selection state
-            if (selectedSkillName === skill.name) {
-                // User clicked the same skill, so deselect it
-                selectedSkillName = null;
-                highlightExperiences([]);
-                hideAllDescriptions();
-            } else {
-                // User clicked a new skill, so select it
-                selectedSkillName = skill.name;
-                skillElement.classList.add('selected'); // Add the new class
-                highlightExperiences(indices);
-                showDescriptionsForIndices(indices);
-            }
-            
-
-        });
-
+                document.querySelectorAll('.skill-tag.selected').forEach(el => el.classList.remove('selected'));
+                if (selectedSkillName === skill.name) {
+                    selectedSkillName = null;
+                    highlightExperiences([]);
+                    hideAllDescriptions();
+                } else {
+                    selectedSkillName = skill.name;
+                    skillElement.classList.add('selected');
+                    highlightExperiences(indices);
+                    showDescriptionsForIndices(indices);
+                }
+            });
+        } else {
+            skillElement.classList.add('skill-no-match');
+        }
         skillsList.appendChild(skillElement);
     });
-
     skillsContainer.appendChild(skillsList);
 }
 
-// Corrected function signature to accept resumeId
-function renderResume(resumeData, resumeId) {
-    console.log("Starting renderResume function.");
+async function generateAndDisplayQuestion(skill, jobTitle) {
+    questionsContainer.innerHTML = '<h4>Generating interview questions...</h4>';
+    questionsContainer.classList.add('visible');
 
-    const skills = resumeData.skills || [];
-    const experience = resumeData.experience || [];
-    const education = resumeData.education || [];
+    try {
+        const result = await generateQuestionCallable({ skill, jobTitle });
+        const questionsData = result.data;
 
-    // Check if data is empty before rendering
-    if (experience.length === 0) {
-        loadingMessage.textContent = "Resume data is incomplete or unavailable.";
-        loadingMessage.classList.remove('loading-animation');
-        return;
-    }
-
-    loadingMessage.style.display = 'none';
-    resumeContainer.style.display = 'block';
-
-    // Clear existing content
-    skillsContainer.innerHTML = '<h2>Skills</h2>';
-    timelineContainer.innerHTML = '';
-
-    // Render skills
-    renderSkills(skills);
-
-    // Render experience as a timeline
-    console.log(`Starting to render experience section with ${experience.length} job entries.`);
-    experience.forEach((job, index) => {
+        const createQuestionHtml = (item) => {
+            // Escape single quotes in the question/answer before placing them in HTML attributes or template strings
+            const safeQuestion = item.question.replace(/'/g, '&#39;');
+            const safeAnswer = item.answer.replace(/'/g, '&#39;');
         
+            return `
+                <li class="question-item">
+                    <h5 class="question-header" onclick="toggleAnswer(this)">
+                        ${safeQuestion}
+                    </h5>
+                    <div class="answer-panel">
+                        <p>${safeAnswer}</p>
+                    </div>
+                </li>
+            `;
+        };
+
+        questionsContainer.innerHTML = `
+            <h3>Interview Questions</h3>
+            <div class="question-list-container">
+                <div class="question-tier" id="warmup-tier">
+                    <h4>Warmup (Foundation)</h4>
+                    <ul>${questionsData.warmup.map(createQuestionHtml).join('')}</ul>
+                </div>
+                <div class="question-tier" id="manager-tier">
+                    <h4>Manager (Behavioral & Project)</h4>
+                    <ul>${questionsData.manager.map(createQuestionHtml).join('')}</ul>
+                </div>
+                <div class="question-tier" id="legendary-tier">
+                    <h4>Legendary (Deep Technical)</h4>
+                    <ul>${questionsData.legendary.map(createQuestionHtml).join('')}</ul>
+                </div>
+            </div>
+        `;
+        questionsContainer.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center' // This centers the element in the viewport
+        });
+    } catch (error) {
+        console.error("Error generating question:", error);
+        questionsContainer.innerHTML = '<h4>Failed to generate questions. Please try again.</h4>';
+    }
+}
+
+
+function renderTimeline(experiences, resumeId) {
+    timelineContainer.innerHTML = ''; // Clear the container first
+
+    // Step 1: Create a single timeline line and add it to the container
+    const line = document.createElement('div');
+    line.classList.add('timeline-line');
+    timelineContainer.appendChild(line);
+
+    // Step 2: Iterate through each experience and create the job entry
+    //<button class="generate-questions-btn" style="display: none;">Generate Interview Questions</button>
+    experiences.forEach((exp, index) => {
         const jobEntry = document.createElement('div');
         jobEntry.classList.add('job-entry');
         jobEntry.id = `job-${index}`;
-        jobEntry.dataset.jobTitle = job.title;
+        jobEntry.innerHTML = `
+            <div class="timeline-dot">
+                <span class="timeline-year-range">${exp.start_year} - ${exp.end_year}</span>
+            </div>
+            <div class="job-entry-image-container">
+                <img class="experience-image" src="" alt="Image for ${exp.title}" style="display: none;"/>
+            </div>
+            <div class="job-description-container" style="display: none;">
+                <p>${exp.description}</p>
+            </div>
+            <div class="job-card-actions">
+                <button 
+                    class="generate-questions-btn" 
+                    data-job-index="${index}" 
+                    data-job-title="${exp.title.replace(/"/g, '&quot;')}"
+                    style="margin-top: 15px;">
+                    Generate Interview Questions
+                </button>
+            </div>
+        `;
+        
+        const jobImageContainer = jobEntry.querySelector('.job-entry-image-container');
+        const imageElement = jobEntry.querySelector('.experience-image');
+        
+        jobImageContainer.style.background = '#383838';
+        jobImageContainer.style.animation = 'pulse-bg 1.5s infinite';
 
-        // Add the click listener to the entire job entry container
-        // This makes the whole card clickable for generating a question
-        jobEntry.addEventListener('click', () => {
-            const isJobHighlighted = jobEntry.classList.contains('highlight');
-            console.log(`jobEntry clicked. selectedSkillName is '${selectedSkillName}', isJobHighlighted is ${isJobHighlighted}`);
-
-            if (selectedSkillName && isJobHighlighted) {
-                generateAndDisplayQuestion(selectedSkillName, job.title, jobEntry);
-            }
-        });
-
-        // Create the image element and its container
-        const jobImageContainer = document.createElement('div');
-        jobImageContainer.classList.add('job-entry-image-container');
-
-        const jobTitleElement = document.createElement('h3');
-        jobTitleElement.textContent = job.title;
-
-        const imageElement = document.createElement('img');
-        imageElement.classList.add('experience-image');
-        imageElement.alt = `Image for ${job.title}`;
-        imageElement.style.display = 'none'; // Initially hide the image
-
-        // Add the onload and onerror listeners here
-        imageElement.onload = () => {
-            imageElement.style.display = 'block'; // Show image on load
-            jobImageContainer.style.animation = 'none'; // Stop the pulse animation
-            jobImageContainer.style.background = 'none'; // Remove the background color
-        };
-        imageElement.onerror = () => {
-            console.error('ERROR: Failed to load image from URL.');
-            imageElement.alt = "Image not available.";
-            imageElement.style.display = 'block'; // Show alt text
-            jobImageContainer.style.animation = 'none'; // Stop the pulse animation
-            jobImageContainer.style.background = 'none'; // Remove the background color
-        };
-
-        jobImageContainer.appendChild(jobTitleElement);
-        jobImageContainer.appendChild(imageElement);
-        jobEntry.appendChild(jobImageContainer);
-
-        // Fetch image URL from Cloud Function
-        generateImageCallable({ resumeId, jobIndex: index, title: job.title, description: job.description })
+        generateImageCallable({ resumeId, jobIndex: index, title: exp.title, description: exp.description })
             .then(result => {
                 const imageUrl = result.data.imageUrl;
-                console.log(`SUCCESS: Image URL received from function: ${imageUrl}`);
                 imageElement.src = imageUrl;
+                imageElement.onload = () => {
+                    imageElement.style.display = 'block';
+                    jobImageContainer.style.animation = 'none';
+                    jobImageContainer.style.background = 'none';
+                };
+                imageElement.onerror = () => {
+                    console.error('ERROR: Failed to load image from URL.');
+                    imageElement.alt = "Image not available.";
+                    imageElement.style.display = 'block';
+                    jobImageContainer.style.animation = 'none';
+                    jobImageContainer.style.background = 'none';
+                };
             })
             .catch(error => {
                 console.error("Image generation failed:", error);
                 imageElement.alt = "Image not available.";
+                imageElement.style.display = 'block';
             });
 
-        // Add job details and description
-        const jobDescriptionContainer = document.createElement('div');
-        jobDescriptionContainer.classList.add('job-description-container');
-        jobDescriptionContainer.style.display = 'none';
+        const generateBtn = jobEntry.querySelector('.generate-questions-btn');
+        generateBtn.addEventListener('click', () => {
+            if (selectedSkillName) {
+                generateAndDisplayQuestion(selectedSkillName, exp.title);
+            } else {
+                alert("Please select a skill from the list first!");
+            }
+        });
 
-        const jobDescription = document.createElement('p');
-        jobDescription.textContent = job.description;
-        jobDescriptionContainer.appendChild(jobDescription);
-        jobEntry.appendChild(jobDescriptionContainer);
-
-        // Append to the timeline container
         timelineContainer.appendChild(jobEntry);
     });
 }
 
-// Function to poll Firestore for resume data
-async function pollForResumeData(resumeRef, resumeId) {
-    const maxAttempts = 10;
-    const delay = 5000; // 5 seconds
+async function pollForResumeData(resumeRef, resumeId, retries = 0, maxRetries = 60, delay = 2000) {
+    try {
+        const docSnap = await getDoc(resumeRef);
+        if (docSnap.exists() && docSnap.data().data) {
+            return docSnap.data().data;
+        } else {
+            if (retries < maxRetries) {
+                
+                //let message = `Processing resume... Please wait. Retrying (${retries + 1}/${maxRetries}).`;
+                let message = `Processing resume... Please hodl... .`;
 
-    for (let i = 0; i < maxAttempts; i++) {
-        try {
-            const docSnap = await getDoc(resumeRef);
-            if (docSnap.exists()) {
-                const resumeData = docSnap.data().data; // Access the nested 'data' field
-                console.log(`Attempt ${i + 1}: Document exists.`);
+                switch (retries) {
 
-                // Check if all required keys are present and not empty
-                if (resumeData && resumeData.skills && resumeData.experience && resumeData.education) {
-                    console.log(`Attempt ${i + 1}: Found non-empty data. Rendering resume.`);
-                    // Corrected function call to pass resumeId
-                    renderResume(resumeData, resumeId);
-                    return; // Exit on success
-                } else {
-                    console.log(`Attempt ${i + 1}: Document exists but data is incomplete.`);
+                    case 8:
+                    case 9:
+                    case 10:
+                    case 58:
+                    case 59:
+                        message = "Taking longer than usual. Verifying Skynet hasn't taken over the world...";
+                        break;
+                        
+
+                    case 16:
+                    case 17:
+                    case 18:
+                        message = "Still on it... The bits are a bit sticky today. Please hodl...";
+                        break;
+                        
+                    case 28:
+                    case 29:
+                    case 30:
+                        message = "Just warming up the quantum entanglement processor. Your resume is simultaneously here and not here.";
+                        break;
+                        
+                    case 45:
+                    case 46:
+                    case 47:
+                    case 52:
+                    case 53:
+                        message = "Apologies! Our AI model is stuck in an infinite loop reading your 'Attention to Detail' bullet point.";
+                        break;
+
+                    default:
+                        // Uses the default message set at the top
+                        break;
                 }
+                
+                // Update the loading message
+                loadingMessage.textContent = message;
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return pollForResumeData(resumeRef, resumeId, retries + 1, maxRetries, delay);
             } else {
-                console.log(`Attempt ${i + 1}: Document does not exist. Retrying...`);
+                throw new Error('Timeout: Resume data not found after multiple retries.');
             }
-        } catch (error) {
-            console.error(`Error fetching document on attempt ${i + 1}: ${error.message}`);
         }
-
-        await new Promise(res => setTimeout(res, delay));
+    } catch (e) {
+        console.error("Error polling for resume data:", e);
+        throw e;
     }
-
-    loadingMessage.textContent = "Error loading resume. Please try again later.";
-    loadingMessage.classList.remove('loading-animation');
-    console.error("Failed to fetch complete document after multiple retries.");
 }
 
-// Main function to fetch and render the resume
-async function fetchAndRenderResume() {
-    const params = new URLSearchParams(window.location.search);
-    const resumeId = params.get('id');
-
+async function fetchAndRenderResume(user) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const resumeId = urlParams.get('id');
     if (!resumeId) {
-        loadingMessage.textContent = "No resume ID provided in the URL.";
+        loadingMessage.textContent = 'No resume ID provided. Please upload a resume first.';
+        loadingMessage.classList.remove('loading-animation');
         return;
     }
-    // Add this line to ensure the loading message is shown from the start
-    loadingMessage.textContent = "Processing your resume...";
-    loadingMessage.classList.add('loading-animation');
-
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            const userId = user.uid;
-            const resumeRef = doc(db, 'users', userId, 'resumes', resumeId);
-            // Corrected function call to pass resumeId
-            await pollForResumeData(resumeRef, resumeId);
+    try {
+        const resumeRef = doc(db, 'users', user.uid, 'resumes', resumeId);
+        const resumeData = await pollForResumeData(resumeRef, resumeId);
+        
+        if (resumeData && resumeData.experience && resumeData.experience.length > 0) {
+            renderSkills(resumeData.skills || []);
+            renderTimeline(resumeData.experience, resumeId);
+            loadingMessage.style.display = 'none';
+            resumeContainer.style.display = 'block';
         } else {
-            loadingMessage.textContent = "Please sign in to view this resume.";
+            loadingMessage.textContent = 'Resume data is incomplete or unavailable.';
+            loadingMessage.classList.remove('loading-animation');
         }
-    });
+    } catch (e) {
+        console.error("Error fetching or polling for resume:", e);
+        loadingMessage.textContent = "An error occurred. Please try again later.";
+        loadingMessage.classList.remove('loading-animation');
+    }
 }
 
-// Initial call to start the process
+// In resume-script.js (Global Scope)
 
+window.toggleAnswer = function(element) {
+    // The answer panel is the sibling element (the one immediately after the question header)
+    const answerPanel = element.nextElementSibling;
+    
+    // Toggle a class on the question header to change its style when active
+    element.classList.toggle('active');
+    
+    // Use maxHeight to create a smooth expand/collapse transition
+    if (answerPanel.style.maxHeight) {
+        // Collapse the panel
+        answerPanel.style.maxHeight = null;
+        // Reset padding (optional, but cleaner)
+        answerPanel.style.padding = '0 20px'; 
+    } else {
+        // Expand the panel
+        answerPanel.style.maxHeight = answerPanel.scrollHeight + "px";
+        // Set padding when expanded
+        answerPanel.style.padding = '15px 20px'; 
+    }
+};
+
+// Initial call to start the process
+// This is crucial for when the page loads initially
+// and the auth state is already determined.
 fetchAndRenderResume();

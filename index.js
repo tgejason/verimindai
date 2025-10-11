@@ -60,7 +60,7 @@ exports.processResume = onObjectFinalized({secrets: [geminiApiKey] }, async (eve
 
         For the "skills" key, provide a list of all skills found in the resume. This should be an array of objects. Each object should have a "name" property (string) for the skill name, and an "experienceIndex" property (array of numbers) which contains the indices of the jobs in the "experience" array where this skill was utilized. If a skill is a soft skill or a general technical skill and not tied to a specific job, its "experienceIndex" array should be empty.
 
-        For the "experience" key, provide a timeline of the user's jobs, ordered from most recent to oldest. This should be an array of objects. Each object must have a "title" and a "description" string.
+        For the "experience" key, provide a timeline of the user's jobs, ordered from most recent to oldest. This should be an array of objects. Each object must have a "title", "description", "start_year", and "end_year" string.
 
         For the "education" key, provide a list of education entries. This should be an array of objects, with each object having a "degree" and "institution" string.
 
@@ -72,8 +72,8 @@ exports.processResume = onObjectFinalized({secrets: [geminiApiKey] }, async (eve
             { "name": "Data Analysis", "experienceIndex": [] }
           ],
           "experience": [
-            { "title": "Test Engineer", "description": "Wrote and deployed Python code..." },
-            { "title": "Senior Technician", "description": "Automated test tools..." }
+            { "title": "Test Engineer", "description": "Wrote and deployed Python code...", "start_year": "2020", "end_year": "2022" },
+            { "title": "Senior Technician", "description": "Automated test tools...", "start_year": "2018", "end_year": "2020" }
           ],
           "education": [
             { "degree": "B.S. in Electrical Engineering", "institution": "University of California, Berkeley" }
